@@ -12,7 +12,7 @@ import OpenAI from "openai";
 import jwt from '@tsndr/cloudflare-worker-jwt'
 
 export default {
-	async fetch(request, env, ctx) {
+	async fetch(request, env) {
 		const jwtError = JSON.stringify({
 			error: {
 				"message": "failed_jwt",
@@ -23,14 +23,9 @@ export default {
 		})
 		const jwtFailedResponse = new Response(jwtError, {status: 401})
 
-		const badRequestError = (message)  => { return JSON.stringify({
-			"error": {
-				"message": message,
-				"type": "invalid_request_error",
-				"param": null,
-				"code": null
-			}
-		})}
+		if (!request.headers.has('Authorization')) {
+			return jwtFailedResponse
+		}
 
 		const authHeader = request.headers.get('Authorization')
 		let token;
@@ -46,6 +41,15 @@ export default {
 
 		const body = jwt.decode(token)
 		const userID = body.payload.sub
+
+		const badRequestError = (message)  => { return JSON.stringify({
+			"error": {
+				"message": message,
+				"type": "invalid_request_error",
+				"param": null,
+				"code": null
+			}
+		})}
 
 		if (request.method !== "POST") {
 			return new Response(badRequestError, {status: 405});
